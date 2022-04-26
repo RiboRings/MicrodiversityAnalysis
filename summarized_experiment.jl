@@ -37,3 +37,7 @@ leftjoin!(feature_data, tax_class, on = :name => :Genome)
 sample_data = DataFrame(
     name = ["sample$i" for i in range(1, 9)]
 )
+
+se = SummarizedExperiment(assays, feature_data, sample_data)
+
+feature_data[!, :QualityScore] = feature_data.Completeness .- 5 .* feature_data.Contamination

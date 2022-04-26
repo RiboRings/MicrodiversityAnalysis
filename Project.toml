@@ -2,4 +2,5 @@
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 MicrobiomeAnalysis = "09137a06-29c6-4e66-9476-ab7e4b8c7492"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 SummarizedExperiments = "b04b66ec-f619-4ebf-810e-cf5ccc546695"

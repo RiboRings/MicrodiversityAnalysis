@@ -1,6 +1,3 @@
-using CSV, DataFrames, DataStructures
-using SummarizedExperiments
-
 abund_prof = CSV.File("data/abund_prof.tsv") |> DataFrame
 sort!(abund_prof, :Genome)
 
@@ -17,7 +14,7 @@ assays = OrderedDict{String, AbstractArray}("relabund" => relabund_assay[1:end -
                                             "rpkm" => map(x -> parse(Float64, x), rpkm_assay[1:end - 1, :]))
 
 qual_info = CSV.File("data/qual_info.csv") |> DataFrame
-sort!(feature_data, :Genome)
+sort!(qual_info, :Genome)
 
 bac_tax_class = CSV.File("data/bac_tax_class.tsv") |> DataFrame
 arc_tax_class = CSV.File("data/arc_tax_class.tsv") |> DataFrame

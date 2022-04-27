@@ -4,7 +4,7 @@ library(ggplot2)
 library(grid)
 library(gridExtra)
 
-pNpS_threshold <- 1
+rpkm_threshold <- 1
 
 pNpS_assay <- read_csv("output/pNpS_assay.csv") %>%
   filter(!is.na(sample1))
@@ -24,7 +24,7 @@ for (i in 1:9) {
     rename(pNpS = paste0("sample", i, ".x"),
            DiSiperMbp = paste0("sample", i, ".y"),
            rpkm = paste0("sample", i)) %>%
-    filter(rpkm > pNpS_threshold)
+    filter(rpkm > rpkm_threshold)
   
   plots[[i]] <- ggplot(df, aes(x = DiSiperMbp, y = pNpS, colour = rpkm)) +
     geom_point() +

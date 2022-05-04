@@ -1,5 +1,3 @@
-file_list = []
-
 file_list = [CSV.File("data/md$i.csv") |> DataFrame for i in range(1, 9)]
 
 for file in file_list

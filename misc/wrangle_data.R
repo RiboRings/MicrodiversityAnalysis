@@ -22,3 +22,5 @@ for (i in 1:9) {
 library(tidyverse)
 
 full_dataset <- file_list %>% reduce(full_join, by = "genome")
+
+write_csv2(full_dataset, "tmp.csv")

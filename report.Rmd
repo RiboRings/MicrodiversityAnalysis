@@ -1,0 +1,250 @@
+---
+title: "Microdiversity Analysis of Uranouchi Inlet"
+subtitle: "results from the 9-sample dataset"
+author: "Giulio Benedetti, Yusuke Okazaki, Hiroyuki Ogata"
+date: "`r Sys.Date()`"
+---
+
+This report provides an overview on the microdiversity analysis of the 1066 prokaryotic MAGs originated from the Uranouchi Inlet 9-sample dataset. The viral component was filtered upstream the workflow.
+
+The analytical pipeline includes the following steps:
+
+* quality control with `checkm lineage_wf`
+* de-replication with `dRep --ignoreGenomeQuality -pa 0.9 -sa 0.95`
+* functional annotation with `prokka` (iteratively over MAGs)
+* taxonomic annotation with `gtdbtk identify`, `gtdbtk align` and `gtdbtk classify` in the given order
+* abundance profiling with `coverm genome --coupled <reads> -m relative_abundance tpm rpkm`
+* microdiversity analysis with `inStrain profile --database_mode` (iteratively over bam files)
+
+249 MAGs (23%) were removed by _gtdbtk_ due to an insufficient number of amino acids in MSA. Then, 3% of the remaining 817 elements was filtered out by _inStrain_ based on 0.95 ANI threshold. In total, the cleaned MAGs that were actually inspected by _inStrain_ add up to 696 (65%). The figures in this report only illustrate the data for the 103 MAGs with an RPKM value of `r rpkm_threshold` (10%).
+
+### Community Composition
+
+Apparently, the ecosystem is dominated by roughly 5 different species (8, 35, 354, 449 and 800), which belong to the orders _Actinomarinales_ (first two corresponding to the genera _Actinomarina_ and _Aquiluna_), _Flavobacteriales_, _SAR86_ and _Rhodobacterales_, respectively. Except for species 8, the other MAGs in the top 5 could not be identified up to the species level by _GTDG-Tk_.
+
+_Actinomarina_ is prevalent throughout the entire time series, apart from S2, where it is outnumbered by species _SAR86_ and _Rhodobacterales_. It also seems to experience a seasonal change with peaks at S3 and S8 Such trend partly alternates with that of the other _Actinomarina_ member, which exhibits a single peak at S5. At this time point, the two populations show similar numbers.
+
+_Flavobacteriales_ appears to gradually increase from S6 through S2 and then drop from S2 through S6. This trend of slow increase or low season / high season is also visible for _SAR86_ with a partly overlapping peak between S1 and S3.
+
+Unlike the above, _Rhodobacterales_ varies less dramatically than the other top species and maintains a relatively stable population from S2 through S9.
+
+Even though at lower abundance levels, also the species...
+
+There is no clear pattern to be seen between nucleotide diversity (in the heat map as ND) and MAG abundance dynamics. About 60% of the most abundant taxa present a mean nucleotide diversity lower than 0.2, but this is likely an artifact, since there are more low-diversity MAGs than there are high-diversity ones.
+
+```{r heatmap, fig.width = 6, fig.height = 10}
+df <- mags %>%
+  filter(RpkmMean > rpkm_threshold) %>%
+  arrange(desc(NuclDivMean))
+
+mat <- df %>%
+  transmute(S1 = nucl_diversity_1,
+         S2 = nucl_diversity_2,
+         S3 = nucl_diversity_3,
+         S4 = nucl_diversity_4,
+         S5 = nucl_diversity_5,
+         S6 = nucl_diversity_6,
+         S7 = nucl_diversity_7,
+         S8 = nucl_diversity_8,
+         S9 = nucl_diversity_9) %>%
+  as.matrix()
+
+rownames(mat) <- gsub("metabat2bin_", "", df$Bin)
+
+ha <- HeatmapAnnotation(ND = df$NuclDivMean,
+                        which = "row")
+
+Heatmap(mat,
+#        heatmap_legend_param = list(at = seq(0, max(mat), by = 10)),
+        col = c("blue", "cyan", "green", "yellow", "red"),
+        name = "nucl_diversity",
+        cluster_rows = FALSE,
+        cluster_columns = FALSE,
+        row_title = "MAG",
+        column_title = "Sample",
+        row_names_gp = gpar(fontsize = 5),
+        left_annotation = ha)
+```
+
+```{r table}
+tab <- mags %>%
+  arrange(desc(RpkmMean)) %>%
+  select(Bin,
+         Completeness,
+         Contamination,
+         Phylum,
+         Class,
+         Order,
+         Family,
+         Genus,
+         Species,
+         RpkmMean)
+kable(tab[1:10, ])
+```
+
+### Mutation Landscape
+
+The top 6 MAGs in terms of nucleotide diversity are representative of the orders _Pelagibacterales_ (1, 2 and 4), _Flavobacteriales_ (3) and _HIMB59_ (5 and 6).
+
+Such results might explain why producing non-redundant _Pelagibacterales_ representative MAGs was particularly challenging, as their generally high contamination score (measured by `coverm lineage_wf`) and high diversity would cause them to be filtered out or identified as different species.
+
+```{r make_plots_1}
+plots <- list()
+
+for (i in 1:9) {
+  
+  plots[[i]] <- mags %>%
+  mutate(Y = eval((parse(text = paste0("NonsynonimousFraction_", i)))),
+         X = eval((parse(text = paste0("DiSiperMbp_", i)))),
+         colour = eval(parse(text = paste0("RPKM_", i)))) %>%
+  filter(colour > rpkm_threshold) %>%
+  ggplot(aes(x = X, y = Y, colour = colour)) +
+    geom_point(size = 1) +
+    labs(x = element_blank(), y = element_blank(),
+         colour = "RPKM",
+         subtitle = paste("sample", i)) +
+    theme_classic()
+  
+}
+```
+
+```{r legend_1}
+leg <- g_legend(plots[[length(plots)]])
+```
+
+```{r multipanel_1, out.width = "125%", out.height = "125%"}
+grid.arrange(
+  arrangeGrob(grobs = lapply(plots, function(p) p + guides(colour = FALSE)), 
+              ncol = 3, 
+              bottom = textGrob("Divergent Sites per Mbp",
+                                gp = gpar(fontface = "bold",
+                                          col = "red",
+                                          fontsize = 15)), 
+              left = textGrob("Nonsynonimous Ratio",
+                              gp = gpar(fontface = "bold",
+                                        col="blue",
+                                        fontsize = 15),
+                              rot = 90)),
+  leg,
+  widths = c(9, 1)
+  
+)
+```
+
+```{r}
+tab <- mags %>%
+  arrange(desc(NuclDivMean)) %>%
+  select(Bin,
+         Completeness,
+         Contamination,
+         Phylum,
+         Class,
+         Order,
+         Family,
+         Genus,
+         Species,
+         NuclDivMean)
+kable(tab[1:10, ])
+```
+
+
+```{r make_plots_2}
+plots <- list()
+
+for (i in 1:9) {
+  
+  plots[[i]] <- mags %>%
+  mutate(Y = eval((parse(text = paste0("nucl_diversity_", i ,"/ DiSiperMbp_", i)))),
+         X = eval((parse(text = paste0("RPKM_", i)))),
+         colour = eval(parse(text = paste0("pNpS_", i)))) %>%
+  filter(X > rpkm_threshold) %>%
+  ggplot(aes(x = X, y = Y, colour = colour)) +
+    geom_point(size = 1) +
+    labs(x = element_blank(), y = element_blank(),
+         colour = "pNpS",
+         subtitle = paste("sample", i)) +
+    theme_classic()
+  
+}
+```
+
+```{r table_2}
+leg <- g_legend(plots[[length(plots)]])
+```
+
+```{r multipanel_2, out.width = "125%", out.height = "125%", include = FALSE}
+grid.arrange(
+  arrangeGrob(grobs = lapply(plots, function(p) p + guides(colour = FALSE)), 
+              ncol = 3, 
+              bottom = textGrob("RPKM", gp = gpar(fontface = "bold",
+                                                  col = "red",
+                                                  fontsize = 15)), 
+              left = textGrob("Nucleotide Diversity / Divergent Sites per Mbp",
+                              gp = gpar(fontface = "bold",
+                                        col="blue",
+                                        fontsize = 12),
+                              rot = 90)),
+  leg,
+  widths = c(9, 1)
+  
+)
+```
+
+```{r}
+plots <- list()
+
+for (i in 1:9) {
+  
+  plots[[i]] <- mags %>%
+  mutate(Y = eval((parse(text = paste0("DiSiperMbp_", i)))),
+         X = eval((parse(text = paste0("nucl_diversity_", i)))),
+         colour = eval(parse(text = paste0("RPKM_", i)))) %>%
+  filter(colour > rpkm_threshold) %>%
+  ggplot(aes(x = X, y = Y, colour = colour)) +
+    geom_point(size = 1) +
+    labs(x = element_blank(), y = element_blank(),
+         colour = "RPKM",
+         subtitle = paste("sample", i)) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    theme_classic()
+  
+}
+```
+
+```{r}
+leg <- g_legend(plots[[length(plots)]])
+```
+
+```{r multipanel_3, out.width = "125%", out.height = "125%", include = FALSE}
+grid.arrange(
+  arrangeGrob(grobs = lapply(plots, function(p) p + guides(colour = FALSE)), 
+              ncol = 3, 
+              bottom = textGrob("Nucleotide Diversity",
+                                gp = gpar(fontface = "bold",
+                                          col = "red",
+                                          fontsize = 15)), 
+              left = textGrob("Divergent Sites per Mbp",
+                              gp = gpar(fontface = "bold",
+                                        col="blue",
+                                        fontsize = 15),
+                              rot = 90)),
+  leg,
+  widths = c(9, 1)
+  
+)
+```
+
+### Nucleotide Diversity and MAG quality
+
+Results suggest that the nucleotide diversity of a MAG (as estimated by `inStrain profile`) is associated with a decrease in MAG completeness and an increase in MAG contamination (as evaluated by `checkm lineage_wf`). Statistical significance could be determined by ANOVA.
+
+```{r 3d_plot}
+plot_ly(data = df,
+        x = ~Completeness,
+        y = ~NuclDivMean,
+        z = ~Contamination,
+        type = "scatter3d",
+        mode = "markers",
+        size = ~RpkmMean) %>%
+  layout(scene = list(yaxis = list(title = 'Mean ND')))
+```

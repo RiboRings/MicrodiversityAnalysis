@@ -1,5 +1,5 @@
 source("prep.R")
-rpkm_threshold <- 1
+top_n_taxa <- 100
 
 rmarkdown::render("report.Rmd",
                   output_format = "html_document",

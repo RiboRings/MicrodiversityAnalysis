@@ -32,32 +32,52 @@ Even though at lower abundance levels, also the species...
 
 There is no clear pattern to be seen between nucleotide diversity (in the heat map as ND) and MAG abundance dynamics. About 60% of the most abundant taxa present a mean nucleotide diversity lower than 0.2, but this is likely an artifact, since there are more low-diversity MAGs than there are high-diversity ones.
 
-```{r heatmap, fig.width = 6, fig.height = 10}
+```{r df}
 df <- mags %>%
-  filter(RpkmMean > rpkm_threshold) %>%
+  transmute(Bin,
+            NuclDivMean,
+            Completeness,
+            Contamination,
+            S1 = RPKM_1,
+            S2 = RPKM_2,
+            S3 = RPKM_3,
+            S4 = RPKM_4,
+            S5 = RPKM_5,
+            S6 = RPKM_6,
+            S7 = RPKM_7,
+            S8 = RPKM_8,
+            S9 = RPKM_9)
+
+df$Max <- pmax(df$S1,
+               df$S2,
+               df$S3,
+               df$S4,
+               df$S5,
+               df$S6,
+               df$S7,
+               df$S8,
+               df$S9)
+
+df <- df %>%
+  slice_max(Max, n = top_n_taxa) %>%
   arrange(desc(NuclDivMean))
 
-mat <- df %>%
-  transmute(S1 = nucl_diversity_1,
-         S2 = nucl_diversity_2,
-         S3 = nucl_diversity_3,
-         S4 = nucl_diversity_4,
-         S5 = nucl_diversity_5,
-         S6 = nucl_diversity_6,
-         S7 = nucl_diversity_7,
-         S8 = nucl_diversity_8,
-         S9 = nucl_diversity_9) %>%
+mat <-  df %>%
+  select(-Bin, -Max, -NuclDivMean, -Completeness, -Contamination) %>%
   as.matrix()
 
 rownames(mat) <- gsub("metabat2bin_", "", df$Bin)
+```
 
+
+```{r heatmap, fig.width = 6, fig.height = 10}
 ha <- HeatmapAnnotation(ND = df$NuclDivMean,
                         which = "row")
 
 Heatmap(mat,
-#        heatmap_legend_param = list(at = seq(0, max(mat), by = 10)),
+        heatmap_legend_param = list(at = seq(min(mat), max(mat), by = 10)),
         col = c("blue", "cyan", "green", "yellow", "red"),
-        name = "nucl_diversity",
+        name = "RPKM",
         cluster_rows = FALSE,
         cluster_columns = FALSE,
         row_title = "MAG",
@@ -66,7 +86,7 @@ Heatmap(mat,
         left_annotation = ha)
 ```
 
-```{r table}
+```{r table_1}
 tab <- mags %>%
   arrange(desc(RpkmMean)) %>%
   select(Bin,
@@ -245,6 +265,6 @@ plot_ly(data = df,
         z = ~Contamination,
         type = "scatter3d",
         mode = "markers",
-        size = ~RpkmMean) %>%
+        size = ~Max) %>%
   layout(scene = list(yaxis = list(title = 'Mean ND')))
 ```

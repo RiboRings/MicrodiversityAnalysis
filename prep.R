@@ -16,6 +16,10 @@ library(ComplexHeatmap)
 
 mags <- read_csv2("data/Uranouchi_prok_MAGs.csv")
 
+mags$NsrMean[mags$NsrMean == "#DIV/0!"] <- NA
+mags <- mags %>%
+  mutate(NsrMean = as.numeric(gsub(",", ".", NsrMean)))
+
 g_legend <- function(a.gplot){
   
   tmp <- ggplot_gtable(ggplot_build(a.gplot))

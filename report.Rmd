@@ -69,7 +69,6 @@ mat <-  df %>%
 rownames(mat) <- gsub("metabat2bin_", "", df$Bin)
 ```
 
-
 ```{r heatmap, fig.width = 6, fig.height = 10}
 ha <- HeatmapAnnotation(ND = df$NuclDivMean,
                         which = "row")
@@ -153,7 +152,7 @@ grid.arrange(
 
 ```{r}
 tab <- mags %>%
-  arrange(desc(NuclDivMean)) %>%
+  arrange(desc(NsrMean)) %>%
   select(Bin,
          Completeness,
          Contamination,
@@ -163,98 +162,11 @@ tab <- mags %>%
          Family,
          Genus,
          Species,
-         NuclDivMean)
+         NsrMean)
 kable(tab[1:10, ])
 ```
 
-
-```{r make_plots_2}
-plots <- list()
-
-for (i in 1:9) {
-  
-  plots[[i]] <- mags %>%
-  mutate(Y = eval((parse(text = paste0("nucl_diversity_", i ,"/ DiSiperMbp_", i)))),
-         X = eval((parse(text = paste0("RPKM_", i)))),
-         colour = eval(parse(text = paste0("pNpS_", i)))) %>%
-  filter(X > rpkm_threshold) %>%
-  ggplot(aes(x = X, y = Y, colour = colour)) +
-    geom_point(size = 1) +
-    labs(x = element_blank(), y = element_blank(),
-         colour = "pNpS",
-         subtitle = paste("sample", i)) +
-    theme_classic()
-  
-}
-```
-
-```{r table_2}
-leg <- g_legend(plots[[length(plots)]])
-```
-
-```{r multipanel_2, out.width = "125%", out.height = "125%", include = FALSE}
-grid.arrange(
-  arrangeGrob(grobs = lapply(plots, function(p) p + guides(colour = FALSE)), 
-              ncol = 3, 
-              bottom = textGrob("RPKM", gp = gpar(fontface = "bold",
-                                                  col = "red",
-                                                  fontsize = 15)), 
-              left = textGrob("Nucleotide Diversity / Divergent Sites per Mbp",
-                              gp = gpar(fontface = "bold",
-                                        col="blue",
-                                        fontsize = 12),
-                              rot = 90)),
-  leg,
-  widths = c(9, 1)
-  
-)
-```
-
-```{r}
-plots <- list()
-
-for (i in 1:9) {
-  
-  plots[[i]] <- mags %>%
-  mutate(Y = eval((parse(text = paste0("DiSiperMbp_", i)))),
-         X = eval((parse(text = paste0("nucl_diversity_", i)))),
-         colour = eval(parse(text = paste0("RPKM_", i)))) %>%
-  filter(colour > rpkm_threshold) %>%
-  ggplot(aes(x = X, y = Y, colour = colour)) +
-    geom_point(size = 1) +
-    labs(x = element_blank(), y = element_blank(),
-         colour = "RPKM",
-         subtitle = paste("sample", i)) +
-    theme(axis.text.x = element_text(angle = 45)) +
-    theme_classic()
-  
-}
-```
-
-```{r}
-leg <- g_legend(plots[[length(plots)]])
-```
-
-```{r multipanel_3, out.width = "125%", out.height = "125%", include = FALSE}
-grid.arrange(
-  arrangeGrob(grobs = lapply(plots, function(p) p + guides(colour = FALSE)), 
-              ncol = 3, 
-              bottom = textGrob("Nucleotide Diversity",
-                                gp = gpar(fontface = "bold",
-                                          col = "red",
-                                          fontsize = 15)), 
-              left = textGrob("Divergent Sites per Mbp",
-                              gp = gpar(fontface = "bold",
-                                        col="blue",
-                                        fontsize = 15),
-                              rot = 90)),
-  leg,
-  widths = c(9, 1)
-  
-)
-```
-
-### Nucleotide Diversity and MAG quality
+### Nucleotide Diversity and MAG Quality
 
 Results suggest that the nucleotide diversity of a MAG (as estimated by `inStrain profile`) is associated with a decrease in MAG completeness and an increase in MAG contamination (as evaluated by `checkm lineage_wf`). Statistical significance could be determined by ANOVA.
 

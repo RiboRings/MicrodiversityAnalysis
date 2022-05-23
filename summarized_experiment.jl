@@ -1,44 +1,32 @@
-bac_tax_class = CSV.File("data/bac_tax_class.tsv") |> DataFrame
-arc_tax_class = CSV.File("data/arc_tax_class.tsv") |> DataFrame
-tax_class = vcat(bac_tax_class, arc_tax_class)
-rename!(tax_class, "user_genome" => :Genome)
-select!(tax_class, [:Genome, :classification])
-transform!(tax_class, :classification => ByRow(x -> split(x, ';')) => [:Domain, :Phylum, :Class, :Order, :Family, :Genus, :Species])
-tax_class = tax_class[!, setdiff(names(tax_class), ["classification"])]
-sort!(tax_class, :Genome)
+using MicrobiomeAnalysis
+using XLSX, DataFrames, DataStructures
 
-qual_info = CSV.File("data/qual_info.csv") |> DataFrame
-keep_rows = map(x -> x ∈ tax_class.Genome, qual_info.Genome)
-qual_info = qual_info[keep_rows, :]
-sort!(qual_info, :Genome)
+raw_data = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "A1:L697") |> Matrix
+df = DataFrame(raw_data[2:end, :], raw_data[1, :])
+rename!(df, :Bin => "name")
+df[!, :name] .= String.(df[!, :name])
 
-abund_prof = CSV.File("data/abund_prof.tsv") |> DataFrame
-keep_rows = map(x -> x ∈ tax_class.Genome, abund_prof.Genome)
-abund_prof = abund_prof[keep_rows, :]
-sort!(abund_prof, :Genome)
+tpm = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "AN2:AV697") |> Matrix
+rpkm = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "AW2:BE697") |> Matrix
+pNpS = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "AE2:AM697") |> Matrix
+nucl_div = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "V2:AD697") |> Matrix
+NSF = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "BF2:BN697") |> Matrix
+DiSiperMbp = XLSX.readdata("data/Uranouchi_prok_MAGs.xlsx", "main", "M2:U697") |> Matrix
 
-relabund_idx = map(x -> occursin("Relative Abundance", x), names(abund_prof))
-tpm_idx = map(x -> occursin("TPM", x), names(abund_prof))
-rpkm_idx = map(x -> occursin("RPKM", x), names(abund_prof))
+pNpS[pNpS .== "NA"] .= missing
+nucl_div[nucl_div .== "NA"] .= missing
+NSF[NSF .== "NA"] .= missing
+DiSiperMbp[DiSiperMbp .== "NA"] .= missing
 
-relabund_assay = abund_prof[!, relabund_idx] |> Matrix
-tpm_assay = abund_prof[!, tpm_idx] |> Matrix
-rpkm_assay = abund_prof[!, rpkm_idx] |> Matrix
+assays = OrderedDict{String, AbstractArray}("tpm" => tpm,
+                                            "rpkm" => rpkm,
+                                            "pNpS" => pNpS,
+                                            "nucl_div" => nucl_div,
+                                            "NSF" => NSF,
+                                            "DiSiperMbp" => DiSiperMbp)
 
-assays = OrderedDict{String, AbstractArray}("relabund" => relabund_assay,
-                                            "tpm" => map(x -> parse(Float64, x), tpm_assay),
-                                            "rpkm" => map(x -> parse(Float64, x), rpkm_assay))
-
-feature_data = DataFrame(
-    name = abund_prof[!, :Genome]
-)
-leftjoin!(feature_data, qual_info, on = :name => :Genome)
-leftjoin!(feature_data, tax_class, on = :name => :Genome)
-
-sample_data = DataFrame(
-    name = ["sample$i" for i in range(1, 9)]
+col_data = DataFrame(
+    name = ["sample$i" for i in 1:9]
 )
 
-se = SummarizedExperiment(assays, feature_data, sample_data)
-
-feature_data[!, :QualityScore] = feature_data.Completeness .- 5 .* feature_data.Contamination
+se = SummarizedExperiment(assays, df, col_data)

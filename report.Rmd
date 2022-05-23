@@ -166,6 +166,28 @@ tab <- mags %>%
 kable(tab[1:10, ])
 ```
 
+```{r}
+df2 <- df %>%
+  left_join(mags) %>%
+  transmute(Bin,
+            R21 = S2 / S1,
+            R32 = S3 / S2,
+            R43 = S4 / S3,
+            R54 = S5 / S4,
+            R65 = S6 / S5,
+            R76 = S7 / S6,
+            R87 = S8 / S7,
+            R98 = S9 / S8,
+            NDR21 = nucl_diversity_2 / nucl_diversity_1,
+            NDR32 = nucl_diversity_3 / nucl_diversity_2,
+            NDR43 = nucl_diversity_4 / nucl_diversity_3,
+            NDR54 = nucl_diversity_5 / nucl_diversity_4,
+            NDR65 = nucl_diversity_6 / nucl_diversity_5,
+            NDR76 = nucl_diversity_7 / nucl_diversity_6,
+            NDR87 = nucl_diversity_8 / nucl_diversity_7,
+            NDR98 = nucl_diversity_9 / nucl_diversity_8)
+```
+
 ### Nucleotide Diversity and MAG Quality
 
 Results suggest that the nucleotide diversity of a MAG (as estimated by `inStrain profile`) is associated with a decrease in MAG completeness and an increase in MAG contamination (as evaluated by `checkm lineage_wf`). Statistical significance could be determined by ANOVA.
